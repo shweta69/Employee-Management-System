@@ -1,0 +1,38 @@
+# Rows ending with / will match folders recursivley
+#Generic folders - wherever they exist in the directory tree
+$tf/
+bin/
+obj/
+.vs/
+.vscode/
+packages/
+obj/
+**/**/.sonarqube/
+**/**/.scannerwork/
+
+#Spefific folders
+Solutions/Testing/FitNesse Tests/FitNesse/FitNesseRoot/files/testResults/
+DR/Solutions/DynamicReporting/Publish/Client/Test/
+Solutions/Testing/TestComplete Tests/Log/
+Solutions/Testing/TestComplete Tests/NameMapping/Images/
+
+#rows not ending in / will match files or folders
+#Generic files
+*.sj.bak
+*.mds.tcLS
+*.pjs.tcLS
+*.user
+*.xml.bak
+*.suo
+*.psess
+*.vspx
+*.vsp
+~*
+
+#Specific files
+Solutions/Applications/TestResults/Core test run/Out/AgentRestart.dat
+Solutions/Testing/TestComplete Tests/FPM_WindowsClient.tcCfgExtender
+obj/
+/Solutions/Web/web-client/frontend/.vscode
+Solutions/Web/web-client/frontend/apps/.vscode/launch.json
+Solutions/Web/web-client/frontend/projects/*/coverage/
