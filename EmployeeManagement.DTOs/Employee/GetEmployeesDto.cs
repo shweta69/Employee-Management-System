@@ -9,6 +9,7 @@ namespace EmployeeManagement.DTOs.Employee
     public class GetEmployeesDto
     {
         public int EmployeeId { get; set; }
+        public int? userId { get; set; }
         public string EmployeeFullName { get; set; }
         public string Email { get; set; }
         public string DepartmentName { get; set; }

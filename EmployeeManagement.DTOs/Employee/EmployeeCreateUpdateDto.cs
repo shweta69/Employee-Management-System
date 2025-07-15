@@ -25,6 +25,8 @@ namespace EmployeeManagement.DTOs.Employee
         [Required]
         public int DesignationId { get; set; }
 
+        public int? userId { get; set; }
+
         public bool IsActive { get; set; } 
     }
 }

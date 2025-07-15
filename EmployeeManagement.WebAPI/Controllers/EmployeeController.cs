@@ -5,16 +5,15 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
-using Microsoft.Extensions.Logging;
 
 [ApiController]
 [Route("api/[controller]")]
 public class EmployeeController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
-    private readonly ILogger _logging;
+    private readonly ILogger<EmployeeController> _logging;
 
-    public EmployeeController(ApplicationDbContext context, ILogger logging)
+    public EmployeeController(ApplicationDbContext context, ILogger<EmployeeController> logging)
     {
         _context = context;
         _logging = logging;
@@ -29,12 +28,17 @@ public class EmployeeController : ControllerBase
 
         try
         {
+            var matchedUser = await _context.users.FirstOrDefaultAsync(u => u.Email.ToLower().Trim() == dto.Email.ToLower().Trim());
+
+            int? resolvedUserId = matchedUser?.UserId; // will be null if user not found
+
             var employee = new Employee
             {
                 EmployeeFullName = dto.EmployeeFullName,
                 Email = dto.Email,
                 DepartmentId = dto.DepartmentId,
                 DesignationId = dto.DesignationId,
+                UserId = resolvedUserId, // Use valid UserId only if found
                 IsActive = dto.IsActive
             };
 
@@ -66,6 +70,7 @@ public class EmployeeController : ControllerBase
                 Email = e.Email,
                 DepartmentName = e.Department.DepartmentName,
                 DesignationTitle = e.Designation.DesignationTitle,
+                userId = e.UserId,
                 IsActive = e.IsActive
             })
             .ToListAsync();
@@ -98,11 +103,39 @@ public class EmployeeController : ControllerBase
             Email = employee.Email,
             DepartmentName = employee.Department.DepartmentName,
             DesignationTitle = employee.Designation.DesignationTitle,
+            userId = employee.UserId,
             IsActive = employee.IsActive
         };
 
         return Ok(dto);
     }
+
+    
+    //[Authorize(Roles = "Admin,HR")]
+    //[HttpPut("{id}")]
+    //public async Task<IActionResult> Update(int id, EmployeeCreateUpdateDto dto)
+    //{
+    //    try
+    //    {
+    //        var employee = await _context.employees.FindAsync(id);
+    //        if (employee == null) return NotFound();
+
+    //        employee.EmployeeFullName = dto.EmployeeFullName;
+    //        employee.Email = dto.Email;
+    //        employee.DepartmentId = dto.DepartmentId;
+    //        employee.DesignationId = dto.DesignationId;
+    //        employee.IsActive = dto.IsActive;
+
+    //        await _context.SaveChangesAsync();
+    //        return Ok("Employee updated successfully");
+    //    }
+    //    catch (DbUpdateException dbEx)
+    //    {
+    //        _logging.LogError(dbEx, "Database update error during employee update.");
+    //        return BadRequest("Failed to update employee. Check if DepartmentId or DesignationId is valid.");
+    //    }
+
+    //}
 
     //Update
     [Authorize(Roles = "Admin,HR")]
@@ -114,11 +147,16 @@ public class EmployeeController : ControllerBase
             var employee = await _context.employees.FindAsync(id);
             if (employee == null) return NotFound();
 
+            var matchedUser = await _context.users.FirstOrDefaultAsync(u => u.Email.ToLower().Trim() == dto.Email.ToLower().Trim());
+
+            int? resolvedUserId = matchedUser?.UserId; // if no match → null
+
             employee.EmployeeFullName = dto.EmployeeFullName;
             employee.Email = dto.Email;
             employee.DepartmentId = dto.DepartmentId;
             employee.DesignationId = dto.DesignationId;
             employee.IsActive = dto.IsActive;
+            employee.UserId = resolvedUserId; 
 
             await _context.SaveChangesAsync();
             return Ok("Employee updated successfully");
@@ -128,8 +166,13 @@ public class EmployeeController : ControllerBase
             _logging.LogError(dbEx, "Database update error during employee update.");
             return BadRequest("Failed to update employee. Check if DepartmentId or DesignationId is valid.");
         }
-
+        catch (Exception ex)
+        {
+            _logging.LogError(ex, "Unexpected error during employee update.");
+            return StatusCode(500, "An unexpected error occurred.");
+        }
     }
+
 
     //delete: Only Admins can
     [Authorize(Roles = "Admin")]

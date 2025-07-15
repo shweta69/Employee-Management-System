@@ -41,11 +41,25 @@ namespace EmployeeManagement.WebAPI.Controllers
                 if (await _applicationDb.users.AnyAsync(u => u.Email == dto.Email))
                     return BadRequest("Email already exists");
 
+                var existingEmployee = await _applicationDb.employees
+                    .FirstOrDefaultAsync(e => e.Email.ToLower() == dto.Email.ToLower());
+
+                // If this email is already linked to an employee,
+                // prevent registration with Admin or HR roles
+                if (existingEmployee != null &&
+                    (dto.Role == UserRoles.Admin || dto.Role == UserRoles.HR))
+                {
+                    return BadRequest("This email is already registered as an employee and cannot be used for Admin or HR roles.");
+                }
+
                 var currentUserRole = User?.FindFirst(ClaimTypes.Role)?.Value;
+
                 if (currentUserRole == "HR" && dto.Role != UserRoles.Employee)
                     return Forbid("HR can only register Employees");
+
                 if (currentUserRole == "Employee")
-                    return Forbid("Employee cannot register users");
+                    return Forbid("Employees cannot register users");
+
 
                 var user = new User
                 {
@@ -60,6 +74,14 @@ namespace EmployeeManagement.WebAPI.Controllers
 
                 _applicationDb.users.Add(user);
                 await _applicationDb.SaveChangesAsync();
+
+                var matchedEmployee = await _applicationDb.employees.FirstOrDefaultAsync(e => e.Email.ToLower() == user.Email.ToLower() && e.UserId == null);
+
+                if (matchedEmployee != null)
+                {
+                    matchedEmployee.UserId = user.UserId;
+                    await _applicationDb.SaveChangesAsync();
+                }
 
                 return Ok("User registered successfully");
             }
