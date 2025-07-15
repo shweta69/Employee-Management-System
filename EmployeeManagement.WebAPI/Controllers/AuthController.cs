@@ -8,6 +8,10 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using EmployeeManagement.Repositories.DB_Context;
 using Microsoft.EntityFrameworkCore;
+using EmployeeManagement.WebAPI.Services;
+using EmployeeManagement.DTOs.SharedModel;
+using EmployeeManagement.DTOs.User;
+using Microsoft.AspNetCore.Authorization;
 
 namespace EmployeeManagement.WebAPI.Controllers
 {
@@ -16,11 +20,62 @@ namespace EmployeeManagement.WebAPI.Controllers
     public class AuthController : ControllerBase
     {
         private readonly ApplicationDbContext _applicationDb; //for calling db via ef
-        private readonly IConfiguration _config; //for accessing the jwt tokken
-        public AuthController(ApplicationDbContext _applicationDb, IConfiguration _config)
+        private readonly TokkenService _tokkenService;
+        public AuthController(ApplicationDbContext _applicationDb, TokkenService _tokkenService)
         {
             this._applicationDb = _applicationDb;
-            this._config = _config;
+            this._tokkenService = _tokkenService;
+        }
+
+        [Authorize(Roles = "Admin,HR")]
+        [HttpPost("register")]
+        public async Task<IActionResult> Register(RegisterDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            if (await _applicationDb.users.AnyAsync(u => u.Email == dto.Email))
+                return BadRequest("Email already exists");
+
+            var currentUserRole = User?.FindFirst(ClaimTypes.Role)?.Value;
+            if (currentUserRole == "HR" && dto.Role != UserRoles.Employee)
+                return Forbid("HR can only register Employees");
+            if (currentUserRole == "Employee")
+                return Forbid("Employee cannot register users");
+
+            var user = new User
+            {
+                Username = dto.Username,
+                Email = dto.Email,
+                Role = dto.Role,
+                IsActive = true //at the time of new user sign up, isactive is always true.
+            };
+
+            var hasher = new PasswordHasher<User>();
+            user.PasswordHash = hasher.HashPassword(user, dto.Password);
+
+            _applicationDb.users.Add(user);
+            await _applicationDb.SaveChangesAsync();
+
+            return Ok("User registered successfully");
+        }
+
+        [HttpPost("login")]
+        public async Task<IActionResult> Login(LoginDto dto)
+        {
+            var user = await _applicationDb.users.FirstOrDefaultAsync(u => u.Email == dto.Email);
+
+            if (user == null || !user.IsActive)
+                return Unauthorized("Invalid credentials or inactive user");
+
+            var hasher = new PasswordHasher<User>();
+            var result = hasher.VerifyHashedPassword(user, user.PasswordHash, dto.Password);
+
+            if (result == PasswordVerificationResult.Failed)
+                return Unauthorized("Invalid password");
+
+            var token = _tokkenService.GenerateToken(user);
+            return Ok(new { token });
         }
         
     }
