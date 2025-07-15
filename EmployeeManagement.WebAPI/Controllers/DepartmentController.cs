@@ -1,11 +1,101 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using EmployeeManagement.DTOs.Department;
+using EmployeeManagement.Repositories.DB_Context;
+using EmployeeManagement.Repositories.Entities;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
-namespace EmployeeManagement.WebAPI.Controllers
+[ApiController]
+[Route("api/[controller]")]
+[Authorize(Roles = "Admin")]
+public class DepartmentController : ControllerBase
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class DepartmentController : ControllerBase
+    private readonly ApplicationDbContext _context;
+
+    public DepartmentController(ApplicationDbContext context)
     {
+        _context = context;
+    }
+
+    //Create Department
+    [HttpPost]
+    public async Task<IActionResult> Create(DepartmentCreateUpdateDto dto)
+    {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+
+        var department = new Department
+        {
+            DepartmentName = dto.DepartmentName,
+            IsActive = dto.IsActive
+        };
+
+        _context.departments.Add(department);
+        await _context.SaveChangesAsync();
+
+        return Ok("Department created successfully");
+    }
+
+    //Get All Departments
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<GetDepartmentDto>>> GetAll()
+    {
+        var departments = await _context.departments
+            .Select(d => new GetDepartmentDto
+            {
+                DepartmentId = d.DepartmentId,
+                DepartmentName = d.DepartmentName,
+                IsActive = d.IsActive
+            })
+            .ToListAsync();
+
+        return Ok(departments);
+    }
+
+    //Get Department by Id
+    [HttpGet("{id}")]
+    public async Task<ActionResult<GetDepartmentDto>> GetById(int id)
+    {
+        var department = await _context.departments.FindAsync(id);
+        if (department == null) return NotFound();
+
+        var dto = new GetDepartmentDto
+        {
+            DepartmentId = department.DepartmentId,
+            DepartmentName = department.DepartmentName,
+            IsActive = department.IsActive
+        };
+
+        return Ok(dto);
+    }
+
+    //Update Department
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(int id, DepartmentCreateUpdateDto dto)
+    {
+        var department = await _context.departments.FindAsync(id);
+        if (department == null) return NotFound();
+
+        department.DepartmentName = dto.DepartmentName;
+        department.IsActive = dto.IsActive;
+
+        await _context.SaveChangesAsync();
+
+        return Ok("Department updated successfully");
+    }
+
+    //Delete (Deactivate)
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var department = await _context.departments.FindAsync(id);
+        if (department == null) return NotFound();
+
+        if (!department.IsActive)
+            return BadRequest("Department already inactive");
+
+        department.IsActive = false;
+        await _context.SaveChangesAsync();
+
+        return Ok("Department deactivated successfully");
     }
 }
