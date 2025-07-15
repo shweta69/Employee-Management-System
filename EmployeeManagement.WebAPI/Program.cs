@@ -1,5 +1,6 @@
 using System.Text;
 using EmployeeManagement.Repositories.DB_Context;
+using EmployeeManagement.WebAPI.Middlewares;
 using EmployeeManagement.WebAPI.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -84,6 +85,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseMiddleware<ExceptionMiddleware>();
 
 app.UseAuthentication();
 
