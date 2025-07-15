@@ -5,16 +5,19 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using Microsoft.Extensions.Logging;
 
 [ApiController]
 [Route("api/[controller]")]
 public class EmployeeController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
+    private readonly ILogger _logging;
 
-    public EmployeeController(ApplicationDbContext context)
+    public EmployeeController(ApplicationDbContext context, ILogger logging)
     {
         _context = context;
+        _logging = logging;
     }
 
     //Create Employee
@@ -24,19 +27,28 @@ public class EmployeeController : ControllerBase
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
 
-        var employee = new Employee
+        try
         {
-            EmployeeFullName = dto.EmployeeFullName,
-            Email = dto.Email,
-            DepartmentId = dto.DepartmentId,
-            DesignationId = dto.DesignationId,
-            IsActive = dto.IsActive
-        };
+            var employee = new Employee
+            {
+                EmployeeFullName = dto.EmployeeFullName,
+                Email = dto.Email,
+                DepartmentId = dto.DepartmentId,
+                DesignationId = dto.DesignationId,
+                IsActive = dto.IsActive
+            };
 
-        _context.employees.Add(employee);
-        await _context.SaveChangesAsync();
+            _context.employees.Add(employee);
+            await _context.SaveChangesAsync();
 
-        return Ok("Employee created successfully");
+            return Ok("Employee created successfully");
+        }
+        catch (DbUpdateException dbEx)
+        {
+            _logging.LogError(dbEx, "Database update error during employee creation.");
+            return BadRequest("Failed to create employee. Check if DepartmentId or DesignationId is valid.");
+        }
+        
     }
 
     //Get All Employees
@@ -97,17 +109,26 @@ public class EmployeeController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(int id, EmployeeCreateUpdateDto dto)
     {
-        var employee = await _context.employees.FindAsync(id);
-        if (employee == null) return NotFound();
+        try
+        {
+            var employee = await _context.employees.FindAsync(id);
+            if (employee == null) return NotFound();
 
-        employee.EmployeeFullName = dto.EmployeeFullName;
-        employee.Email = dto.Email;
-        employee.DepartmentId = dto.DepartmentId;
-        employee.DesignationId = dto.DesignationId;
-        employee.IsActive = dto.IsActive;
+            employee.EmployeeFullName = dto.EmployeeFullName;
+            employee.Email = dto.Email;
+            employee.DepartmentId = dto.DepartmentId;
+            employee.DesignationId = dto.DesignationId;
+            employee.IsActive = dto.IsActive;
 
-        await _context.SaveChangesAsync();
-        return Ok("Employee updated successfully");
+            await _context.SaveChangesAsync();
+            return Ok("Employee updated successfully");
+        }
+        catch (DbUpdateException dbEx)
+        {
+            _logging.LogError(dbEx, "Database update error during employee update.");
+            return BadRequest("Failed to update employee. Check if DepartmentId or DesignationId is valid.");
+        }
+
     }
 
     //delete: Only Admins can

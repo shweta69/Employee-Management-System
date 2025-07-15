@@ -12,9 +12,12 @@ public class DesignationController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
 
-    public DesignationController(ApplicationDbContext context)
+    private readonly ILogger<DesignationController> _logger;
+
+    public DesignationController(ApplicationDbContext context, ILogger<DesignationController> logger)
     {
         _context = context;
+        _logger = logger;
     }
 
     //Create
@@ -23,16 +26,24 @@ public class DesignationController : ControllerBase
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
 
-        var designation = new Designation
+        try {
+            var designation = new Designation
+            {
+                DesignationTitle = dto.DesignationTitle,
+                IsActive = dto.IsActive
+            };
+
+            _context.Designations.Add(designation);
+            await _context.SaveChangesAsync();
+
+            return Ok("Designation created successfully");
+        }
+        catch (DbUpdateException dbEx)
         {
-            DesignationTitle = dto.DesignationTitle,
-            IsActive = dto.IsActive
-        };
+            _logger.LogError(dbEx, "Database error while creating designation.");
+            return BadRequest("Could not create designation. Please try again.");
+        }
 
-        _context.Designations.Add(designation);
-        await _context.SaveChangesAsync();
-
-        return Ok("Designation created successfully");
     }
 
     //Get All records
@@ -72,15 +83,24 @@ public class DesignationController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(int id, DesignationCreateUpdateDto dto)
     {
-        var designation = await _context.Designations.FindAsync(id);
-        if (designation == null) return NotFound();
+        try
+        {
+            var designation = await _context.Designations.FindAsync(id);
+            if (designation == null) return NotFound();
 
-        designation.DesignationTitle = dto.DesignationTitle;
-        designation.IsActive = dto.IsActive;
+            designation.DesignationTitle = dto.DesignationTitle;
+            designation.IsActive = dto.IsActive;
 
-        await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync();
 
-        return Ok("Designation updated successfully");
+            return Ok("Designation updated successfully");
+        }
+        catch (DbUpdateException dbEx)
+        {
+            _logger.LogError(dbEx, "Database error while updating designation.");
+            return BadRequest("Could not update designation. Please try again.");
+        }
+
     }
 
     //Deactivate record

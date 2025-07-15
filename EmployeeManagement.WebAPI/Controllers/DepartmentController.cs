@@ -12,9 +12,12 @@ public class DepartmentController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
 
-    public DepartmentController(ApplicationDbContext context)
+    private readonly ILogger<DesignationController> _logger;
+
+    public DepartmentController(ApplicationDbContext context, ILogger<DesignationController> logger )
     {
         _context = context;
+        _logger = logger;
     }
 
     //Create Department
@@ -23,16 +26,25 @@ public class DepartmentController : ControllerBase
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
 
-        var department = new Department
+        try 
         {
-            DepartmentName = dto.DepartmentName,
-            IsActive = dto.IsActive
-        };
+            var department = new Department
+            {
+                DepartmentName = dto.DepartmentName,
+                IsActive = dto.IsActive
+            };
 
-        _context.departments.Add(department);
-        await _context.SaveChangesAsync();
+            _context.departments.Add(department);
+            await _context.SaveChangesAsync();
 
-        return Ok("Department created successfully");
+            return Ok("Department created successfully");
+        }
+        catch (DbUpdateException dbEx)
+        {
+            _logger.LogError(dbEx, "Database error while creating Department.");
+            return BadRequest("Could not create Department. Please try again.");
+        }
+
     }
 
     //Get All Departments
@@ -72,15 +84,24 @@ public class DepartmentController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(int id, DepartmentCreateUpdateDto dto)
     {
-        var department = await _context.departments.FindAsync(id);
-        if (department == null) return NotFound();
+        try
+        {
+            var department = await _context.departments.FindAsync(id);
+            if (department == null) return NotFound();
 
-        department.DepartmentName = dto.DepartmentName;
-        department.IsActive = dto.IsActive;
+            department.DepartmentName = dto.DepartmentName;
+            department.IsActive = dto.IsActive;
 
-        await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync();
 
-        return Ok("Department updated successfully");
+            return Ok("Department updated successfully");
+        }
+        catch (DbUpdateException dbEx)
+        {
+            _logger.LogError(dbEx, "Database error while updating Department.");
+            return BadRequest("Could not update Department. Please try again.");
+        }
+
     }
 
     //Delete (Deactivate)
