@@ -12,5 +12,16 @@ namespace EmployeeManagement.Repositories.DB_Context
         public DbSet<Department> departments { get; set; }
         public DbSet<Designation> Designations { get; set; }
 
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<Employee>()
+                .HasOne(e => e.User)
+                .WithOne()
+                .HasForeignKey<Employee>(e => e.UserId)
+                .OnDelete(DeleteBehavior.SetNull); // optional
+        }
+
     }
 }

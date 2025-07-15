@@ -5,7 +5,7 @@
 namespace EmployeeManagement.Repositories.Migrations
 {
     /// <inheritdoc />
-    public partial class initialTablesSetup : Migration
+    public partial class InitialTablesSetup : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -65,7 +65,8 @@ namespace EmployeeManagement.Repositories.Migrations
                     Email = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     IsActive = table.Column<bool>(type: "bit", nullable: false),
                     DepartmentId = table.Column<int>(type: "int", nullable: false),
-                    DesignationId = table.Column<int>(type: "int", nullable: false)
+                    DesignationId = table.Column<int>(type: "int", nullable: false),
+                    UserId = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -82,6 +83,12 @@ namespace EmployeeManagement.Repositories.Migrations
                         principalTable: "departments",
                         principalColumn: "DepartmentId",
                         onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_employees_users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "users",
+                        principalColumn: "UserId",
+                        onDelete: ReferentialAction.SetNull);
                 });
 
             migrationBuilder.CreateIndex(
@@ -93,6 +100,13 @@ namespace EmployeeManagement.Repositories.Migrations
                 name: "IX_employees_DesignationId",
                 table: "employees",
                 column: "DesignationId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_employees_UserId",
+                table: "employees",
+                column: "UserId",
+                unique: true,
+                filter: "[UserId] IS NOT NULL");
         }
 
         /// <inheritdoc />
@@ -102,13 +116,13 @@ namespace EmployeeManagement.Repositories.Migrations
                 name: "employees");
 
             migrationBuilder.DropTable(
-                name: "users");
-
-            migrationBuilder.DropTable(
                 name: "Designations");
 
             migrationBuilder.DropTable(
                 name: "departments");
+
+            migrationBuilder.DropTable(
+                name: "users");
         }
     }
 }

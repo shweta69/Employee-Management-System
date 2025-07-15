@@ -21,10 +21,13 @@ namespace EmployeeManagement.Repositories.Entities
         public int DepartmentId { get; set; }
         public int DesignationId { get; set; }
 
+        public int? UserId { get; set; }
+
         // Navigation Properties
         public Department Department { get; set; }
         public Designation Designation { get; set; }
+        public User User { get; set; }
 
-        
+
     }
 }
